@@ -1,4 +1,4 @@
-// server.js
+// server.js - Simple WebRTC signaling server for video calls
 const fs = require("fs");
 const path = require("path");
 const express = require("express");
@@ -16,33 +16,45 @@ const io = socketIo(server, {
   },
 });
 
-// In‐memory map: userId → socketId
+// In-memory map: userId → socketId
 const userSockets = {};
 
-/** MIDDLEWARE **/
+// --- Express Middleware ---
 app.use(cors());
-app.use(express.json()); // for parsing application/json
+app.use(express.json());
 
-// expose the user directory
+// REST endpoint: return list of users for login
 app.get("/api/users", (req, res) => {
   const data = fs.readFileSync(path.join(__dirname, "data/users.json"));
   res.json(JSON.parse(data));
 });
 
-/** SOCKET.IO SIGNALING **/
+// --- Socket.IO Signaling Logic ---
 io.on("connection", (socket) => {
   console.log("☸ Socket connected:", socket.id);
 
-  // 1) Client identifies itself with a logical userId
-  // client must emit “identify”
-  socket.on("identify", ({ userId }) => {
+  // Handle user identification and presence
+  socket.on("identify", handleIdentify);
+  socket.on("disconnect", handleDisconnect);
+  // WebRTC signaling events
+  socket.on("call-user", handleCallUser);
+  socket.on("answer-call", handleAnswerCall);
+  socket.on("ice-candidate", handleIceCandidate);
+
+  /**
+   * Map userId to this socket and broadcast online users
+   * @param {{userId: string}} param0
+   */
+  function handleIdentify({ userId }) {
     userSockets[userId] = socket.id;
     console.log(`User ${userId} is now mapped to socket ${socket.id}`);
     io.emit("online-list", Object.keys(userSockets));
-  });
+  }
 
-  // 2) When a user disconnects, remove them from the map
-  socket.on("disconnect", () => {
+  /**
+   * Remove user from map on disconnect and broadcast online users
+   */
+  function handleDisconnect() {
     for (const [uid, sid] of Object.entries(userSockets)) {
       if (sid === socket.id) {
         delete userSockets[uid];
@@ -51,43 +63,50 @@ io.on("connection", (socket) => {
       }
     }
     io.emit("online-list", Object.keys(userSockets));
-  });
+  }
 
-  // 3) WebRTC offer/answer/ICE signaling
-  //    All messages carry a `toUserId` so we can lookup the socket
-  // your existing signaling handlers can now reference userSockets[toUserId]
-  socket.on("call-user", ({ toUserId, signalData }) => {
+  /**
+   * Relay WebRTC offer from caller to callee
+   * @param {{toUserId: string, signalData: any}}
+   */
+  function handleCallUser({ toUserId, signalData }) {
     const targetSocket = userSockets[toUserId];
     if (!targetSocket) return;
-
-    // find the caller’s userId by matching this socket.id
+    // Find the caller’s userId by matching this socket.id
     const fromUserId = Object.entries(userSockets).find(
       ([uid, sid]) => sid === socket.id
     )?.[0];
-
     io.to(targetSocket).emit("incoming-call", {
       fromUserId,
       signalData,
     });
-  });
+  }
 
-  socket.on("answer-call", ({ toUserId, signalData, fromUserId }) => {
+  /**
+   * Relay WebRTC answer from callee to caller
+   * @param {{toUserId: string, signalData: any, fromUserId: string}}
+   */
+  function handleAnswerCall({ toUserId, signalData, fromUserId }) {
     const targetSid = userSockets[toUserId];
     if (targetSid) {
       io.to(targetSid).emit("call-answered", { fromUserId, signalData });
     }
-  });
+  }
 
-  socket.on("ice-candidate", ({ toUserId, candidate, fromUserId }) => {
+  /**
+   * Relay ICE candidate between peers
+   * @param {{toUserId: string, candidate: any, fromUserId: string}}
+   */
+  function handleIceCandidate({ toUserId, candidate, fromUserId }) {
     const targetSid = userSockets[toUserId];
     if (targetSid) {
       io.to(targetSid).emit("ice-candidate", { fromUserId, candidate });
     }
-  });
+  }
 });
 
-// Start server
+// --- Start server ---
 const PORT = process.env.PORT || 9001;
 server.listen(PORT, () => {
-  console.log(`💬 Signaling server listening on http://localhost:${PORT}`);
+  console.log(`Signaling server listening on http://localhost:${PORT}`);
 });
