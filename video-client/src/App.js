@@ -1,294 +1,250 @@
-// src/App.js
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import SimplePeer from "simple-peer";
+import React, { useState, useEffect, useRef } from "react";
 import { socket } from "./socket";
+
+import Login from "./components/Login";
+import UserPicker from "./components/UserPicker";
 import VideoPlayer from "./components/VideoPlayer";
 import IncomingCallModal from "./components/IncomingCallModal";
-import CallButton from "./components/CallButton";
 import CallControls from "./components/CallControls";
-import "./App.css"; // add your layout/styles here
 
-function App() {
+import { useMediaDevices } from "./hooks/useMediaDevices";
+import { useLocalStream } from "./hooks/useLocalStream";
+import { usePeerConnection } from "./hooks/usePeerConnection";
+import { useSwapCamera } from "./hooks/useSwapCamera";
+
+export default function App() {
+  // ── Login ──
+  const [users, setUsers] = useState([]);
+  const [me, setMe] = useState("");
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [online, setOnline] = useState([]);
+
+  // ── Call State ──
   const [status, setStatus] = useState("idle");
-  const [remoteId, setRemoteId] = useState(null);
+  const [target, setTarget] = useState("");
+  const [callee, setCallee] = useState(null);
+  const [offerSDP, setOfferSDP] = useState(null);
+
+  // ── Media state ──
   const [muted, setMuted] = useState(false);
   const [videoOff, setVideoOff] = useState(false);
-  const [videoDevices, setVideoDevices] = useState([]);
-  const [audioDevices, setAudioDevices] = useState([]);
-  const [selectedVideo, setSelectedVideo] = useState("default");
-  const [selectedAudio, setSelectedAudio] = useState("default");
+  const [vidDevice, setVidDevice] = useState("default");
+  const [audDevice, setAudDevice] = useState("default");
 
-  const localVideoRef = useRef();
-  const remoteVideoRef = useRef();
-  const peerRef = useRef();
-  const prevVideoRef = useRef("default");
+  // ── hooks ─
+  const { videoInputs, audioInputs } = useMediaDevices();
+  const [localRef, getLocalStream] = useLocalStream(vidDevice, audDevice);
 
-  // 1) Enumerate once
+  const remoteRef = useRef();
+  const iceBuffer = useRef([]); // buffer ICE candidates before peer exists
+  const { peerRef, createPeer, destroyPeer } = usePeerConnection({
+    socket,
+    remoteId: callee,
+    onRemoteStream: (stream) => {
+      console.log("[onRemoteStream] Got remote stream:", stream);
+      if (remoteRef.current) {
+        remoteRef.current.srcObject = stream;
+        setStatus("in-call");
+      } else {
+        console.warn("[onRemoteStream] remoteRef.current is null");
+      }
+    },
+    onEnded: cleanup,
+  });
+  const originalStreamRef = useRef(null);
+  // wire up the swap-camera logic
+  useSwapCamera(localRef, peerRef, originalStreamRef, vidDevice);
+
+  // ── Socket listeners ──
   useEffect(() => {
-    navigator.mediaDevices.enumerateDevices().then((devs) => {
-      setVideoDevices(devs.filter((d) => d.kind === "videoinput"));
+    // live online list
+    socket.on("online-list", setOnline);
+
+    // incoming offer
+    socket.on("incoming-call", ({ fromUserId, signalData }) => {
+      setCallee(fromUserId);
+      // Only set offerSDP if it is not already set and signalData is an offer (not a candidate)
+      if (!offerSDP && signalData.type && (signalData.type === "offer" || signalData.type === "answer")) {
+        setOfferSDP(signalData);
+        setStatus("ringing");
+      } else {
+        // Ignore if not an offer/answer
+        console.log("[incoming-call] Ignored non-offer signalData", signalData);
+      }
     });
+
+    // callee’s answer
+    socket.on("call-answered", ({ signalData }) => {
+      if (peerRef.current) peerRef.current.signal(signalData);
+    });
+
+    // ICE candidates
+    socket.on("ice-candidate", ({ candidate }) => {
+      if (peerRef.current) {
+        peerRef.current.signal(candidate);
+      } else {
+        // Buffer ICE candidates until peer is created
+        iceBuffer.current.push(candidate);
+        console.log("[ice-candidate] Buffered ICE candidate", candidate);
+      }
+    });
+
+    return () => {
+      socket.off("online-list");
+      socket.off("incoming-call");
+      socket.off("call-answered");
+      socket.off("ice-candidate");
+    };
+  }, [callee, peerRef, offerSDP]);
+
+  // ── Load users ──
+  useEffect(() => {
+    fetch("http://localhost:9001/api/users")
+      .then((r) => r.json())
+      .then(setUsers)
+      .catch(console.error);
   }, []);
 
-  // 2) Only swap when selectedVideo truly changes
+  // ── Identify ourselves & get online-list ──
   useEffect(() => {
-    if (prevVideoRef.current === selectedVideo) return;
-    prevVideoRef.current = selectedVideo;
-    swapVideoDevice(selectedVideo);
-  }, [selectedVideo]);
+    if (!loggedIn) return;
+    socket.emit("identify", { userId: me });
+  }, [loggedIn, me]);
 
-  // 3) swapVideoDevice pulls out old video, stops it, opens new one, replaces track
-  const swapVideoDevice = async (deviceId) => {
-    const oldStream = localVideoRef.current?.srcObject;
-    if (!oldStream) return;
+  // ── Login screen ──
+  if (!loggedIn) {
+    return (
+      <Login
+        users={users}
+        value={me}
+        onChange={setMe}
+        onLogin={() => setLoggedIn(true)}
+      />
+    );
+  }
 
-    const oldVideoTrack = oldStream.getVideoTracks()[0];
-    oldVideoTrack.stop(); // free camera
+  // ── Core: start or answer ──
+  async function startCall({ initiator }) {
+    setStatus("calling");
 
-    let newVidStream;
+    // 1) get local media
+    let localStream;
     try {
-      newVidStream = await navigator.mediaDevices.getUserMedia({
-        video:
-          deviceId === "default" ? true : { deviceId: { exact: deviceId } },
-        audio: false,
-      });
+      localStream = await getLocalStream();
     } catch (err) {
-      console.error("camera open failed:", err);
+      console.warn("[startCall] Failed to get local stream, falling back to audio only", err);
+      // fallback to audio only
+      localStream = await navigator.mediaDevices.getUserMedia({
+        video: false,
+        audio: true,
+      });
+      localRef.current.srcObject = localStream;
+    }
+    if (!localStream) {
+      console.error("[startCall] No local stream available!");
       return;
     }
-    const newVideoTrack = newVidStream.getVideoTracks()[0];
-
-    // replace on peer
-    if (peerRef.current) {
-      peerRef.current.replaceTrack(oldVideoTrack, newVideoTrack, oldStream);
+    // store it for later swaps:
+    originalStreamRef.current = localStream;
+    // 2) create peer
+    await createPeer({ initiator, stream: localStream });
+    const peer = peerRef.current;
+    // After peer is created, flush any buffered ICE candidates
+    if (iceBuffer.current.length > 0) {
+      iceBuffer.current.forEach((candidate) => {
+        peer.signal(candidate);
+      });
+      iceBuffer.current = [];
     }
 
-    // rebuild local stream (keep audio from oldStream)
-    const audioTracks = oldStream.getAudioTracks();
-    const combined = new MediaStream([newVideoTrack, ...audioTracks]);
-    localVideoRef.current.srcObject = combined;
-
-    // cleanup helper stream
-    newVidStream.getTracks().forEach((t) => t.stop());
-  };
-
-  // Socket listeners…
-  useEffect(() => {
-    socket.on("connect", () => console.log("My ID:", socket.id));
-    socket.on("call-request", ({ from }) => {
-      setRemoteId(from);
-      setStatus("ringing");
-    });
-    socket.on("call-accept", () => startPeer(true));
-    socket.on("call-decline", ({ reason }) => {
-      alert("Declined: " + reason);
-      reset();
-    });
-    socket.on("signal", ({ data }) => {
-      peerRef.current?.signal(data);
-    });
-    return () => {
-      socket.off("call-request");
-      socket.off("call-accept");
-      socket.off("call-decline");
-      socket.off("signal");
-    };
-  }, [remoteId]);
-
-  // Whenever the selected devices change, swap media
-  useEffect(() => {
-    async function swapDevices() {
-      // if not in a call yet, just get new local preview
-      if (!localVideoRef.current?.srcObject) return;
-
-      const oldStream = localVideoRef.current.srcObject;
-      const oldVideoTrack = oldStream.getVideoTracks()[0];
-      const oldAudioTrack = oldStream.getAudioTracks()[0];
-
-      // new constraints from dropdowns
-      const constraints = {
-        video:
-          selectedVideo === "default"
-            ? true
-            : { deviceId: { exact: selectedVideo } },
-        audio:
-          selectedAudio === "default"
-            ? true
-            : { deviceId: { exact: selectedAudio } },
-      };
-      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
-
-      // replace tracks on PeerConnection if active
-      if (peerRef.current) {
-        peerRef.current.replaceTrack(
-          oldVideoTrack,
-          newStream.getVideoTracks()[0],
-          oldStream
-        );
-        peerRef.current.replaceTrack(
-          oldAudioTrack,
-          newStream.getAudioTracks()[0],
-          oldStream
-        );
+    // 3) wire up .signal → server events
+    peer.on("signal", (data) => {
+      if (initiator) {
+        socket.emit("call-user", { toUserId: target, signalData: data });
+      } else {
+        socket.emit("answer-call", { toUserId: callee, signalData: data });
       }
+    });
 
-      // update local preview and clean up
-      localVideoRef.current.srcObject = newStream;
-      oldStream.getTracks().forEach((t) => t.stop());
+    // 4) if answering, inject the incoming offer
+    if (!initiator && offerSDP) {
+      console.log("[startCall] Answering with offerSDP", offerSDP);
+      peer.signal(offerSDP);
+      setOfferSDP(null);
     }
-    swapDevices();
-  }, [selectedVideo, selectedAudio]);
+  }
 
-  // Get local media (called on peer start)
-  const getMedia = useCallback(async () => {
-    const constraints = {
-      video:
-        selectedVideo === "default"
-          ? true
-          : { deviceId: { exact: selectedVideo } },
-      audio:
-        selectedAudio === "default"
-          ? true
-          : { deviceId: { exact: selectedAudio } },
-    };
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    localVideoRef.current.srcObject = stream;
-    return stream;
-  }, [selectedVideo, selectedAudio]);
-
-  // Kick off a call
-  const callUser = async (id) => {
-    setRemoteId(id);
-    setStatus("calling");
-    socket.emit("call-request", { to: id });
+  // ── Handlers ──
+  const call = () => startCall({ initiator: true });
+  const answer = () => startCall({ initiator: false });
+  const decline = () => {
+    socket.emit("call-decline", { toUserId: callee });
+    cleanup();
+  };
+  const hangup = () => {
+    destroyPeer();
+    cleanup();
   };
 
-  // Answer or start peer
-  const startPeer = async (initiator) => {
-    const stream = await getMedia();
-    const peer = new SimplePeer({ initiator, trickle: true, stream });
-    peer.on("signal", (data) => socket.emit("signal", { to: remoteId, data }));
-    peer.on("stream", (remoteStream) => {
-      console.log("Got remote stream!", remoteStream);
-      remoteVideoRef.current.srcObject = remoteStream;
-    });
-    peerRef.current = peer;
-    setStatus("in-call");
-  };
-
-  // Accept incoming call
-  const acceptCall = () => {
-    setStatus("calling");
-    startPeer(false);
-    socket.emit("call-accept", { to: remoteId });
-  };
-
-  // Decline
-  const declineCall = () => {
-    socket.emit("call-decline", { to: remoteId, reason: "Busy" });
-    reset();
-  };
-
-  // Hang up / cancel
-  const hangUp = () => {
-    if (peerRef.current) peerRef.current.destroy();
-    // stop & clear streams
-    [localVideoRef.current, remoteVideoRef.current].forEach((v) => {
-      const s = v.srcObject;
-      if (s) s.getTracks().forEach((t) => t.stop());
-      v.srcObject = null;
-    });
-    reset();
-  };
-
-  const reset = () => {
-    setStatus("idle");
-    setRemoteId(null);
-    setMuted(false);
-    setVideoOff(false);
-  };
-
-  // Controls
+  // ── Mute / Video ──
   const toggleMute = () => {
-    const [t] = localVideoRef.current.srcObject.getAudioTracks();
+    const [t] = localRef.current.srcObject.getAudioTracks();
     t.enabled = muted;
     setMuted(!muted);
   };
   const toggleVideo = () => {
-    const [t] = localVideoRef.current.srcObject.getVideoTracks();
+    const [t] = localRef.current.srcObject.getVideoTracks();
     t.enabled = videoOff;
     setVideoOff(!videoOff);
   };
-  const switchCamera = async () => {
-    // 1) Pull out the old local stream & its video track
-    const oldStream = localVideoRef.current.srcObject;
-    if (!oldStream) return;
-    const oldVideoTrack = oldStream.getVideoTracks()[0];
 
-    // 2) Get a new stream with the other camera
-    const newStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: videoOff ? "environment" : "user" },
-      audio: true,
+  // ── Cleanup ──
+  function cleanup() {
+    [localRef.current, remoteRef.current].forEach((v) => {
+      v?.srcObject?.getTracks().forEach((t) => t.stop());
+      if (v) v.srcObject = null;
     });
-    const newVideoTrack = newStream.getVideoTracks()[0];
-
-    // 3) Replace the track on the existing RTCPeerConnection
-    //    Using simple-peer's helper:
-    peerRef.current.replaceTrack(oldVideoTrack, newVideoTrack, oldStream);
-
-    // 4) Show the new stream locally
-    localVideoRef.current.srcObject = newStream;
+    setStatus("idle");
+    setCallee(null);
+    setOfferSDP(null);
+    setMuted(false);
     setVideoOff(false);
-
-    // 5) Now stop the old stream's tracks
-    oldStream.getTracks().forEach((t) => t.stop());
-  };
+  }
 
   return (
     <div className="app-container">
+      <UserPicker
+        users={users}
+        onlineUsers={online}
+        currentUserId={me}
+        value={target}
+        onChange={setTarget}
+        onCall={call}
+      />
+
       <div className="videos">
-        <VideoPlayer
-          streamRef={localVideoRef}
-          muted={true}
-          style={{ width: 200 }}
-        />
-        <VideoPlayer
-          streamRef={remoteVideoRef}
-          muted={false}
-          style={{ width: 400 }}
-        />
+        <VideoPlayer streamRef={localRef} muted style={{ width: 200 }} />
+        <VideoPlayer streamRef={remoteRef} style={{ width: 400 }} />
       </div>
 
       {status === "ringing" && (
-        <IncomingCallModal onAccept={acceptCall} onDecline={declineCall} />
+        <IncomingCallModal onAccept={answer} onDecline={decline} />
       )}
-
-      <CallButton
-        status={status}
-        onCall={() => {
-          const id = prompt("Enter user ID");
-          callUser(id);
-        }}
-        onCancel={hangUp}
-      />
 
       <CallControls
         status={status}
-        onMute={toggleMute}
-        onToggleVideo={toggleVideo}
-        onSwitchCam={switchCamera} // optional, you can remove if dropdown covers it
-        onHangup={hangUp}
         muted={muted}
         videoOff={videoOff}
-        videoDevices={videoDevices}
-        audioDevices={audioDevices}
-        selectedVideo={selectedVideo}
-        selectedAudio={selectedAudio}
-        onSelectVideo={setSelectedVideo}
-        onSelectAudio={setSelectedAudio}
+        onMute={toggleMute}
+        onToggleVideo={toggleVideo}
+        onHangup={hangup}
+        videoDevices={videoInputs}
+        audioDevices={audioInputs}
+        selectedVideo={vidDevice}
+        selectedAudio={audDevice}
+        onSelectVideo={setVidDevice}
+        onSelectAudio={setAudDevice}
       />
     </div>
   );
 }
-
-export default App;
