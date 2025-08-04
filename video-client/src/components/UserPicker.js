@@ -1,3 +1,4 @@
+import "./UserPicker.css";
 // src/components/UserPicker.js
 import React from "react";
 

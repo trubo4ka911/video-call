@@ -1,3 +1,4 @@
+import "./CallControls.css";
 // src/components/CallControls.js
 import React from "react";
 export default function CallControls({
@@ -32,6 +33,9 @@ export default function CallControls({
           ))}
         </select>
       </label>
+      <button onClick={onToggleVideo}>
+        {videoOff ? "Start Video" : "Stop Video"}
+      </button>
       <label>
         Microphone:
         <select
@@ -47,9 +51,6 @@ export default function CallControls({
         </select>
       </label>
       <button onClick={onMute}>{muted ? "Unmute" : "Mute"}</button>
-      <button onClick={onToggleVideo}>
-        {videoOff ? "Start Video" : "Stop Video"}
-      </button>
       <button className="end-call" onClick={onHangup}>
         End Call
       </button>

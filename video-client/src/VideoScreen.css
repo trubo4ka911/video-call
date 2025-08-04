@@ -1,0 +1,30 @@
+.videos {
+  display: flex;
+  gap: 32px;
+  margin: 32px 0 24px 0;
+  justify-content: center;
+}
+
+.video-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 16px 0 rgba(0,0,0,0.08);
+  padding: 16px 12px 8px 12px;
+}
+
+.video-label {
+  font-size: 1rem;
+  color: #4b5563;
+  margin-bottom: 8px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
+video {
+  border-radius: 12px;
+  box-shadow: 0 1px 8px 0 rgba(0,0,0,0.10);
+  background: #222;
+}

@@ -1,0 +1,45 @@
+.controls-container {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 16px 0 rgba(0, 0, 0, 0.08);
+  padding: 18px 24px 12px 24px;
+  margin: 0 auto 24px auto;
+  max-width: 80%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 16px;
+  align-items: center;
+  justify-content: center;
+}
+.controls-container label {
+  font-size: 1rem;
+  color: #374151;
+  margin-right: 8px;
+}
+.controls-container select {
+  margin-left: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 1rem;
+}
+.controls-container button {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.controls-container button.end-call {
+  background: #f87171;
+}
+.controls-container button.end-call:hover {
+  background: #dc2626;
+}
+.controls-container button:not(.end-call):hover {
+  background: #1d4ed8;
+}

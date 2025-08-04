@@ -1,3 +1,4 @@
+import "./VideoScreen.css";
 import React, { useState, useEffect, useRef } from "react";
 import { socket } from "./socket";
 
@@ -101,7 +102,15 @@ export default function App() {
         onCall={() => call(target)}
       />
 
-      <div className="videos">
+      <div
+        className="videos"
+        style={{
+          display:
+            status === "calling" || status === "in-call" || status === "ringing"
+              ? "flex"
+              : "none",
+        }}
+      >
         <div className="video-block">
           <span className="video-label">You</span>
           <VideoPlayer streamRef={localRef} muted style={{ width: 200 }} />
