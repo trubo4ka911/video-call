@@ -16,17 +16,34 @@ const io = socketIo(server, {
   },
 });
 
-// In-memory map: userId → socketId
+// In-memory map: SearchUser → socketId
 const userSockets = {};
 
 // --- Express Middleware ---
 app.use(cors());
 app.use(express.json());
 
-// REST endpoint: return list of users for login
-app.get("/api/users", (req, res) => {
-  const data = fs.readFileSync(path.join(__dirname, "data/users.json"));
-  res.json(JSON.parse(data));
+
+// Load management and mobile users
+const mgtUsers = JSON.parse(fs.readFileSync(path.join(__dirname, "data/OR_MGT_USERS_SAMPLE.json")));
+const mobUsers = JSON.parse(fs.readFileSync(path.join(__dirname, "data/OR_MOB_USERS_SAMPLE.json")));
+
+// Helper: filter by SearchUser if query param present
+function filterBySearchUser(users, search) {
+  if (!search) return users;
+  return users.filter(u => u.SearchUser && u.SearchUser.toLowerCase().includes(search.toLowerCase()));
+}
+
+// Endpoint: management users
+app.get("/api/users/management", (req, res) => {
+  const search = req.query.search || "";
+  res.json(filterBySearchUser(mgtUsers, search));
+});
+
+// Endpoint: mobile users
+app.get("/api/users/mobile", (req, res) => {
+  const search = req.query.search || "";
+  res.json(filterBySearchUser(mobUsers, search));
 });
 
 // --- Socket.IO Signaling Logic ---
@@ -42,10 +59,11 @@ io.on("connection", (socket) => {
   socket.on("ice-candidate", handleIceCandidate);
 
   /**
-   * Map userId to this socket and broadcast online users
-   * @param {{userId: string}} param0
+   * Map SearchUser to this socket and broadcast online users
+   * @param {{ userId: string }} param0
    */
   function handleIdentify({ userId }) {
+    // userId is SearchUser for both DBs
     userSockets[userId] = socket.id;
     console.log(`User ${userId} is now mapped to socket ${socket.id}`);
     io.emit("online-list", Object.keys(userSockets));
@@ -72,7 +90,7 @@ io.on("connection", (socket) => {
   function handleCallUser({ toUserId, signalData }) {
     const targetSocket = userSockets[toUserId];
     if (!targetSocket) return;
-    // Find the caller’s userId by matching this socket.id
+    // Find the caller’s SearchUser by matching this socket.id
     const fromUserId = Object.entries(userSockets).find(
       ([uid, sid]) => sid === socket.id
     )?.[0];

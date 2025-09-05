@@ -15,9 +15,12 @@ import { useCall } from "./hooks/useCall";
 export default function App() {
   // ── Login ──
   const [users, setUsers] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
   const [me, setMe] = useState("");
   const [loggedIn, setLoggedIn] = useState(false);
   const [online, setOnline] = useState([]);
+  const [userSource, setUserSource] = useState("management");
+  const [search, setSearch] = useState("");
 
   // ── Call State ──
   const [target, setTarget] = useState("");
@@ -58,12 +61,21 @@ export default function App() {
     };
   }, []);
 
-  // ── Load users ──
+  // ── Load users for selected source (for login) ──
   useEffect(() => {
-    fetch("http://localhost:9001/api/users")
+    const url = `http://localhost:9001/api/users/${userSource}?search=${encodeURIComponent(search)}`;
+    fetch(url)
       .then((r) => r.json())
       .then(setUsers)
       .catch(console.error);
+  }, [userSource, search]);
+
+  // ── Load all users from both sources (for online detection) ──
+  useEffect(() => {
+    Promise.all([
+      fetch("http://localhost:9001/api/users/management").then((r) => r.json()),
+      fetch("http://localhost:9001/api/users/mobile").then((r) => r.json()),
+    ]).then(([mgt, mob]) => setAllUsers([...mgt, ...mob]));
   }, []);
 
   // ── Identify ourselves & get online-list ──
@@ -80,21 +92,47 @@ export default function App() {
         value={me}
         onChange={setMe}
         onLogin={() => setLoggedIn(true)}
+        source={userSource}
+        onSourceChange={setUserSource}
+        search={search}
+        onSearch={setSearch}
       />
     );
   }
-
 
   // Decline handler
   const decline = () => {
     cleanup();
   };
 
+  // Only show online users from both DBs, exclude self
+  const onlineOtherUsers = allUsers.filter(
+    (u) => online.includes(u.SearchUser) && u.SearchUser !== me
+  );
+
+    // Find info for logged-in user
+    const loggedInUser = allUsers.find((u) => u.SearchUser === me);
+
   return (
     <div className="app-container">
-
+        {loggedInUser && (
+          <div style={{ marginBottom: 16, padding: 8, background: '#f0f6ff', borderRadius: 6 }}>
+            <strong>Logged in as:</strong> {loggedInUser.SearchUser} 🟢
+            {loggedInUser.FirstName !== undefined && loggedInUser.LastName !== undefined ? (
+              <>
+                {' | Name: '}{loggedInUser.FirstName} {loggedInUser.LastName}
+                {' | Admin type: '}{loggedInUser.UserType}
+              </>
+            ) : (
+              <>
+                {' | PIN Number: '}{loggedInUser.PINNumber}
+                {' | Admin type: '}{loggedInUser.UserType}
+              </>
+            )}
+          </div>
+        )}
       <UserPicker
-        users={users}
+        users={onlineOtherUsers}
         onlineUsers={online}
         currentUserId={me}
         value={target}
@@ -122,7 +160,10 @@ export default function App() {
       </div>
 
       {status === "ringing" && (
-        <IncomingCallModal onAccept={() => answer(offerSDP)} onDecline={decline} />
+        <IncomingCallModal
+          onAccept={() => answer(offerSDP)}
+          onDecline={decline}
+        />
       )}
 
       <CallControls

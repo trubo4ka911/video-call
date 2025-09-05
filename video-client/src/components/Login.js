@@ -1,16 +1,45 @@
 import "./Login.css";
 // src/components/Login.js
-import React from "react";
 
-export default function Login({ users, value, onChange, onLogin }) {
+export default function Login({
+  users,
+  value,
+  onChange,
+  onLogin,
+  onSourceChange,
+  source,
+}) {
   return (
     <div className="login">
       <h2>Pick your user to “log in”:</h2>
+      <div style={{ marginBottom: 8 }}>
+        <button
+          onClick={() => onSourceChange("management")}
+          style={{
+            fontWeight: source === "management" ? "bold" : "normal",
+            backgroundColor:
+              source === "management" ? "#1706f8ff" : "#06d4f8ff",
+          }}
+        >
+          Management
+        </button>
+        <button
+          onClick={() => onSourceChange("mobile")}
+          style={{
+            fontWeight: source === "mobile" ? "bold" : "normal",
+            backgroundColor: source === "mobile" ? "#1706f8ff" : "#06d4f8ff",
+            marginLeft: 8,
+          }}
+        >
+          Mobile
+        </button>
+      </div>
+
       <select value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="">— select —</option>
         {users.map((u) => (
-          <option key={u.userId} value={u.userId}>
-            {u.name}
+          <option key={u.id} value={u.SearchUser}>
+            {u.SearchUser}
           </option>
         ))}
       </select>

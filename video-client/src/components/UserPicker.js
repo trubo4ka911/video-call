@@ -19,13 +19,23 @@ export default function UserPicker({
           {users
             .filter(
               (u) =>
-                onlineUsers.includes(u.userId) && u.userId !== currentUserId
+                onlineUsers.includes(u.SearchUser) &&
+                u.SearchUser !== currentUserId
             )
-            .map((u) => (
-              <option key={u.userId} value={u.userId}>
-                {u.name} 🟢
-              </option>
-            ))}
+            .map((u) => {
+              // Management: has FirstName/LastName, Mobile: has PINNumber
+              const isManagement = u.FirstName !== undefined && u.LastName !== undefined;
+              return (
+                <option key={u.id} value={u.SearchUser}>
+                  {u.SearchUser} 🟢
+                  {isManagement ? (
+                    <> | Name: {u.FirstName} {u.LastName} | Admin type: {u.UserType}</>
+                  ) : (
+                    <> | PIN Number: {u.PINNumber} | Admin type: {u.UserType}</>
+                  )}
+                </option>
+              );
+            })}
         </select>
       </label>
       <button disabled={!value} onClick={onCall}>
