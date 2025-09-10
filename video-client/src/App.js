@@ -11,6 +11,7 @@ import CallControls from "./components/CallControls";
 import { useMediaDevices } from "./hooks/useMediaDevices";
 import { useLocalStream } from "./hooks/useLocalStream";
 import { useCall } from "./hooks/useCall";
+import { useSwapCamera } from "./hooks/useSwapCamera";
 
 export default function App() {
   // ── Login ──
@@ -43,6 +44,8 @@ export default function App() {
     muted,
     videoOff,
     cleanup,
+    peerRef,
+    originalStreamRef,
   } = useCall({
     socket,
     localRef,
@@ -51,7 +54,16 @@ export default function App() {
     audDevice,
     getLocalStream,
     onError: (msg) => alert(msg),
+    me,
   });
+
+  // Wire camera swap handling: when vidDevice changes, attempt in-call swap
+  useSwapCamera(
+    localRef,
+    /* peerRef */ peerRef,
+    /* originalStreamRef */ originalStreamRef,
+    vidDevice
+  );
 
   // ── Socket listeners ──
   useEffect(() => {
@@ -63,7 +75,9 @@ export default function App() {
 
   // ── Load users for selected source (for login) ──
   useEffect(() => {
-    const url = `http://localhost:9001/api/users/${userSource}?search=${encodeURIComponent(search)}`;
+    const url = `https://10.82.20.126:9001/api/users/${userSource}?search=${encodeURIComponent(
+      search
+    )}`;
     fetch(url)
       .then((r) => r.json())
       .then(setUsers)
@@ -73,8 +87,10 @@ export default function App() {
   // ── Load all users from both sources (for online detection) ──
   useEffect(() => {
     Promise.all([
-      fetch("http://localhost:9001/api/users/management").then((r) => r.json()),
-      fetch("http://localhost:9001/api/users/mobile").then((r) => r.json()),
+      fetch("https://10.82.20.126:9001/api/users/management").then((r) =>
+        r.json()
+      ),
+      fetch("https://10.82.20.126:9001/api/users/mobile").then((r) => r.json()),
     ]).then(([mgt, mob]) => setAllUsers([...mgt, ...mob]));
   }, []);
 
@@ -110,27 +126,39 @@ export default function App() {
     (u) => online.includes(u.SearchUser) && u.SearchUser !== me
   );
 
-    // Find info for logged-in user
-    const loggedInUser = allUsers.find((u) => u.SearchUser === me);
+  // Find info for logged-in user
+  const loggedInUser = allUsers.find((u) => u.SearchUser === me);
 
   return (
     <div className="app-container">
-        {loggedInUser && (
-          <div style={{ marginBottom: 16, padding: 8, background: '#f0f6ff', borderRadius: 6 }}>
-            <strong>Logged in as:</strong> {loggedInUser.SearchUser} 🟢
-            {loggedInUser.FirstName !== undefined && loggedInUser.LastName !== undefined ? (
-              <>
-                {' | Name: '}{loggedInUser.FirstName} {loggedInUser.LastName}
-                {' | Admin type: '}{loggedInUser.UserType}
-              </>
-            ) : (
-              <>
-                {' | PIN Number: '}{loggedInUser.PINNumber}
-                {' | Admin type: '}{loggedInUser.UserType}
-              </>
-            )}
-          </div>
-        )}
+      {loggedInUser && (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: 8,
+            background: "#f0f6ff",
+            borderRadius: 6,
+          }}
+        >
+          <strong>Logged in as:</strong> {loggedInUser.SearchUser} 🟢
+          {loggedInUser.FirstName !== undefined &&
+          loggedInUser.LastName !== undefined ? (
+            <>
+              {" | Name: "}
+              {loggedInUser.FirstName} {loggedInUser.LastName}
+              {" | Admin type: "}
+              {loggedInUser.UserType}
+            </>
+          ) : (
+            <>
+              {" | PIN Number: "}
+              {loggedInUser.PINNumber}
+              {" | Admin type: "}
+              {loggedInUser.UserType}
+            </>
+          )}
+        </div>
+      )}
       <UserPicker
         users={onlineOtherUsers}
         onlineUsers={online}

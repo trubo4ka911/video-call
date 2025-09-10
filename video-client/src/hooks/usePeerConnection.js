@@ -20,7 +20,16 @@ export function usePeerConnection({
   const peerRef = useRef();
 
   async function createPeer({ initiator, stream }) {
-    const peer = new SimplePeer({ initiator, trickle: true, stream });
+    const peer = new SimplePeer({
+      initiator,
+      trickle: true,
+      stream,
+      config: {
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" }
+        ]
+      }
+    });
 
     peer.on("stream", (remoteStream) => {
       onRemoteStream(remoteStream);

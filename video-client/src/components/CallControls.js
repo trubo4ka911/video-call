@@ -26,6 +26,8 @@ export default function CallControls({
           onChange={(e) => onSelectVideo(e.target.value)}
         >
           <option value="default">Default</option>
+          <option value="front">Front (facingMode:user)</option>
+          <option value="back">Back (facingMode:environment)</option>
           {videoDevices.map((d) => (
             <option key={d.deviceId} value={d.deviceId}>
               {d.label}

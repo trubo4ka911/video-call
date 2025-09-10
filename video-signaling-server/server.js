@@ -2,15 +2,26 @@
 const fs = require("fs");
 const path = require("path");
 const express = require("express");
-const http = require("http");
+const https = require("https");
 const cors = require("cors");
 const socketIo = require("socket.io");
 
 const app = express();
-const server = http.createServer(app);
+const server = https.createServer(
+  {
+    key: fs.readFileSync(path.join(__dirname, "../video-client/key.pem")),
+    cert: fs.readFileSync(path.join(__dirname, "../video-client/cert.pem")),
+  },
+  app
+);
 const io = socketIo(server, {
   cors: {
-    origin: ["http://localhost:3000", "http://localhost:3001"],
+    origin: [
+      "http://10.82.20.126:3000",
+      "http://localhost:3000",
+      "https://10.82.20.126:3000",
+      "https://localhost:3000",
+    ],
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -23,15 +34,21 @@ const userSockets = {};
 app.use(cors());
 app.use(express.json());
 
-
 // Load management and mobile users
-const mgtUsers = JSON.parse(fs.readFileSync(path.join(__dirname, "data/OR_MGT_USERS_SAMPLE.json")));
-const mobUsers = JSON.parse(fs.readFileSync(path.join(__dirname, "data/OR_MOB_USERS_SAMPLE.json")));
+const mgtUsers = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "data/OR_MGT_USERS_SAMPLE.json"))
+);
+const mobUsers = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "data/OR_MOB_USERS_SAMPLE.json"))
+);
 
 // Helper: filter by SearchUser if query param present
 function filterBySearchUser(users, search) {
   if (!search) return users;
-  return users.filter(u => u.SearchUser && u.SearchUser.toLowerCase().includes(search.toLowerCase()));
+  return users.filter(
+    (u) =>
+      u.SearchUser && u.SearchUser.toLowerCase().includes(search.toLowerCase())
+  );
 }
 
 // Endpoint: management users
@@ -57,6 +74,18 @@ io.on("connection", (socket) => {
   socket.on("call-user", handleCallUser);
   socket.on("answer-call", handleAnswerCall);
   socket.on("ice-candidate", handleIceCandidate);
+  socket.on("hangup-call", handleHangupCall);
+
+  /**
+   * Relay hangup event to the other peer
+   * @param {{toUserId: string, fromUserId: string}}
+   */
+  function handleHangupCall({ toUserId, fromUserId }) {
+    const targetSid = userSockets[toUserId];
+    if (targetSid) {
+      io.to(targetSid).emit("call-hangup", { fromUserId });
+    }
+  }
 
   /**
    * Map SearchUser to this socket and broadcast online users

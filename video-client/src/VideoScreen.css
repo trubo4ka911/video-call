@@ -1,8 +1,10 @@
+
 .videos {
   display: flex;
   gap: 32px;
   margin: 32px 0 24px 0;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
 .video-block {
@@ -13,6 +15,9 @@
   border-radius: 16px;
   box-shadow: 0 2px 16px 0 rgba(0,0,0,0.08);
   padding: 16px 12px 8px 12px;
+  width: 100%;
+  max-width: 400px;
+  box-sizing: border-box;
 }
 
 .video-label {
@@ -27,4 +32,28 @@ video {
   border-radius: 12px;
   box-shadow: 0 1px 8px 0 rgba(0,0,0,0.10);
   background: #222;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+}
+
+@media (max-width: 600px) {
+  .videos {
+    flex-direction: column;
+    gap: 16px;
+    margin: 16px 0 12px 0;
+  }
+  .video-block {
+    max-width: 100%;
+    padding: 8px 4px 4px 4px;
+  }
+  .video-label {
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+  }
+  video {
+    min-width: 180px;
+    max-width: 100%;
+    height: auto;
+  }
 }
