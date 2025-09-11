@@ -17,9 +17,18 @@ export function useLocalStream(selectedVideo, selectedAudio) {
   else audioConstraint = { deviceId: { exact: selectedAudio } };
 
   const constraints = { video: videoConstraint, audio: audioConstraint };
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    localVideoRef.current.srcObject = stream;
-    return stream;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      try {
+        if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+      } catch (err) {
+        console.warn("Failed to attach local stream to video element:", err);
+      }
+      return stream;
+    } catch (err) {
+      console.error("getUserMedia failed:", err);
+      throw err;
+    }
   }, [selectedVideo, selectedAudio]);
 
   return [localVideoRef, getLocalStream];

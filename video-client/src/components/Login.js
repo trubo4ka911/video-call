@@ -8,10 +8,18 @@ export default function Login({
   onLogin,
   onSourceChange,
   source,
+  socket,
+  signalingUrl,
 }) {
+  const socketState = socket && socket.connected ? "connected" : "disconnected";
   return (
     <div className="login">
       <h2>Pick your user to “log in”:</h2>
+      <div style={{ marginBottom: 8 }}>
+        <strong>Socket:</strong> <span data-testid="socket-state">{socketState}</span>
+        <br />
+        <strong>Signaling:</strong> <span data-testid="signaling-url">{signalingUrl}</span>
+      </div>
       <div style={{ marginBottom: 8 }}>
         <button
           onClick={() => onSourceChange("management")}

@@ -112,6 +112,7 @@ export default function App() {
         onSourceChange={setUserSource}
         search={search}
         onSearch={setSearch}
+        socket={socket}
       />
     );
   }

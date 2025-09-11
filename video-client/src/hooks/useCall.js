@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { usePeerConnection } from "./usePeerConnection";
 
 export function useCall({
@@ -32,18 +32,67 @@ export function useCall({
     setVideoOff(false);
   }, [localRef, remoteRef]);
 
+  const reconnectAttempts = useRef(0);
+  const MAX_RECONNECT = 2;
+  // Use refs to avoid referencing functions before they are created
+  const createPeerRef = useRef();
+  const destroyPeerRef = useRef();
+  const hangupRef = useRef();
+
+  const handleConnectionFailed = useCallback(() => {
+    console.warn("[call] connection failed event received, attempting reconnect...");
+    if (reconnectAttempts.current >= MAX_RECONNECT) {
+      console.warn("[call] max reconnect attempts reached, giving up");
+      hangupRef.current?.();
+      return;
+    }
+    reconnectAttempts.current += 1;
+    const localStream = originalStreamRef.current;
+    destroyPeerRef.current?.();
+    setTimeout(async () => {
+      try {
+        await createPeerRef.current?.({ initiator: true, stream: localStream });
+        console.log('[call] reconnect attempt created new peer');
+      } catch (e) {
+        console.warn('[call] reconnect attempt failed', e);
+      }
+    }, 500);
+  }, []);
+
   const { peerRef, createPeer, destroyPeer } = usePeerConnection({
     socket,
     remoteId: callee,
     onRemoteStream: (stream) => {
-      if (remoteRef.current) {
-        remoteRef.current.srcObject = stream;
-        setStatus("in-call");
-        onStatus?.("in-call");
+      try {
+        if (remoteRef.current) {
+          // assign the incoming stream and try to start playback; Safari/iPad
+          // may block autoplay so play() can reject — that's handled in
+          // the VideoPlayer component, but we still try here to surface
+          // errors early and call onError.
+          remoteRef.current.srcObject = stream;
+          const p = remoteRef.current.play && remoteRef.current.play();
+          if (p && typeof p.then === "function") {
+            p.catch((err) => {
+              console.warn("remote video play() rejected:", err);
+            });
+          }
+          setStatus("in-call");
+          onStatus?.("in-call");
+        }
+      } catch (err) {
+        console.error("Failed to attach remote stream to video element:", err);
+        onError?.("Failed to attach remote stream");
       }
     },
     onEnded: cleanup,
+    onConnectionFailed: handleConnectionFailed,
   });
+
+  // populate refs for use in the failure handler
+  createPeerRef.current = createPeer;
+  destroyPeerRef.current = destroyPeer;
+  // hangup defined below but we set ref here and update after definition
+  hangupRef.current = () => {};
 
   const hangup = useCallback(() => {
     if (callee) {
@@ -52,6 +101,9 @@ export function useCall({
     destroyPeer();
     cleanup();
   }, [callee, socket, me, destroyPeer, cleanup]);
+
+  // expose hangup to the ref used by reconnect handler
+  hangupRef.current = hangup;
 
   const startCall = useCallback(
     async ({ initiator, target, offerSDP: incomingOffer }) => {
