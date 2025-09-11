@@ -4,22 +4,30 @@
   box-shadow: 0 2px 16px 0 rgba(0, 0, 0, 0.08);
   padding: 20px 24px 16px 24px;
   margin: 0 auto 24px auto;
-  max-width: 80%;
+  max-width: 640px;
+  width: inherit;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
 }
 .user-picker label {
   font-size: 1rem;
   color: #374151;
   margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 .user-picker select {
-  margin-left: 8px;
-  padding: 6px 12px;
+  flex: 1 1 320px;
+  min-width: 180px;
+  max-width: 100%;
+  padding: 8px 12px;
   border-radius: 8px;
   border: 1px solid #cbd5e1;
   font-size: 1rem;
+  box-sizing: border-box;
 }
 .user-picker button {
   background: #22c55e;
@@ -30,7 +38,7 @@
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
-  margin-top: 10px;
+  margin-top: 12px;
   transition: background 0.2s;
 }
 .user-picker button:disabled {
