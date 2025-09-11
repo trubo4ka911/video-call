@@ -46,6 +46,7 @@ export default function App() {
     cleanup,
     peerRef,
     originalStreamRef,
+    callee,
   } = useCall({
     socket,
     localRef,
@@ -130,6 +131,18 @@ export default function App() {
   // Find info for logged-in user
   const loggedInUser = allUsers.find((u) => u.SearchUser === me);
 
+  // Determine remote user id: prefer current callee (incoming/outgoing) or the selected target
+  const remoteId = callee || target;
+  const remoteUser = allUsers.find((u) => u.SearchUser === remoteId);
+
+  const labelFor = (user) => {
+    if (!user) return "—";
+    if (user.FirstName !== undefined && user.LastName !== undefined) {
+      return `${user.FirstName} ${user.LastName}`;
+    }
+    return user.PINNumber || user.SearchUser;
+  };
+
   return (
     <div className="app-container">
       {loggedInUser && (
@@ -158,16 +171,51 @@ export default function App() {
               {loggedInUser.UserType}
             </>
           )}
+          {/* Close button moved below the logged-in info for better layout */}
         </div>
       )}
-      <UserPicker
-        users={onlineOtherUsers}
-        onlineUsers={online}
-        currentUserId={me}
-        value={target}
-        onChange={setTarget}
-        onCall={() => call(target)}
-      />
+      {/* Close control under logged-in section */}
+      {loggedInUser && (
+        <div style={{ marginBottom: 12 }}>
+          <button
+            onClick={() => {
+              try {
+                hangup();
+              } catch (e) {
+                console.warn("hangup failed:", e);
+              }
+              try {
+                cleanup();
+              } catch (e) {
+                console.warn("cleanup failed:", e);
+              }
+              setLoggedIn(false);
+              setMe("");
+            }}
+            style={{
+              padding: "6px 10px",
+              backgroundColor: "#ff5f57",
+              color: "white",
+              border: "none",
+              borderRadius: 6,
+              cursor: "pointer",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.12)",
+            }}
+          >
+            Close
+          </button>
+        </div>
+      )}
+      {status === "idle" && (
+        <UserPicker
+          users={onlineOtherUsers}
+          onlineUsers={online}
+          currentUserId={me}
+          value={target}
+          onChange={setTarget}
+          onCall={() => call(target)}
+        />
+      )}
 
       <div
         className="videos"
@@ -179,11 +227,11 @@ export default function App() {
         }}
       >
         <div className="video-block">
-          <span className="video-label">You</span>
+          <span className="video-label">{labelFor(loggedInUser)}</span>
           <VideoPlayer streamRef={localRef} muted style={{ width: 200 }} />
         </div>
         <div className="video-block">
-          <span className="video-label">Remote</span>
+          <span className="video-label">{labelFor(remoteUser)}</span>
           <VideoPlayer streamRef={remoteRef} style={{ width: 400 }} />
         </div>
       </div>
