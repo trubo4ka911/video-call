@@ -40,9 +40,12 @@ export default function VideoPlayer({ streamRef, muted = false, style }) {
   const handleUserStart = () => {
     const video = streamRef && streamRef.current;
     if (!video) return;
-    video.play().then(() => setNeedsInteraction(false)).catch((err) => {
-      console.warn("User-initiated play() failed:", err);
-    });
+    video
+      .play()
+      .then(() => setNeedsInteraction(false))
+      .catch((err) => {
+        console.warn("User-initiated play() failed:", err);
+      });
   };
 
   return (
@@ -75,7 +78,13 @@ export default function VideoPlayer({ streamRef, muted = false, style }) {
             WebkitTapHighlightColor: "transparent",
           }}
         >
-          <div style={{ padding: 12, borderRadius: 8, background: "rgba(0,0,0,0.6)" }}>
+          <div
+            style={{
+              padding: 12,
+              borderRadius: 8,
+              background: "rgba(0,0,0,0.6)",
+            }}
+          >
             Tap to start video
           </div>
         </div>

@@ -21,29 +21,34 @@ export function useSwapCamera(
   const prev = useRef("default");
 
   useEffect(() => {
-  if (!selectedDeviceId) return;
-  if (prev.current === selectedDeviceId) return;
-  prev.current = selectedDeviceId;
+    if (!selectedDeviceId) return;
+    if (prev.current === selectedDeviceId) return;
+    prev.current = selectedDeviceId;
 
-  console.log("[SWAP] Requesting new camera:", selectedDeviceId);
+    console.log("[SWAP] Requesting new camera:", selectedDeviceId);
 
     const original = originalStreamRef.current;
     if (!original) return;
 
-  // note: oldVideoTrack will be re-fetched later as currentOld
+    // note: oldVideoTrack will be re-fetched later as currentOld
     (async () => {
       // Build constraints supporting 'front'/'back' aliases
       let videoConstraint;
       if (selectedDeviceId === "default") videoConstraint = true;
-      else if (selectedDeviceId === "front") videoConstraint = { facingMode: { ideal: "user" } };
-      else if (selectedDeviceId === "back") videoConstraint = { facingMode: { ideal: "environment" } };
+      else if (selectedDeviceId === "front")
+        videoConstraint = { facingMode: { ideal: "user" } };
+      else if (selectedDeviceId === "back")
+        videoConstraint = { facingMode: { ideal: "environment" } };
       else videoConstraint = { deviceId: { exact: selectedDeviceId } };
 
       try {
-        const tmpStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraint, audio: false });
+        const tmpStream = await navigator.mediaDevices.getUserMedia({
+          video: videoConstraint,
+          audio: false,
+        });
         const newVideoTrack = tmpStream.getVideoTracks()[0];
         if (!newVideoTrack) {
-          tmpStream.getTracks().forEach(t => t.stop());
+          tmpStream.getTracks().forEach((t) => t.stop());
           return;
         }
 
@@ -70,7 +75,10 @@ export function useSwapCamera(
         // If replaceTrack succeeded, remove and stop old track, then add new
         if (replaced) {
           try {
-            console.log("[SWAP] Removing old track:", currentOld && currentOld.label);
+            console.log(
+              "[SWAP] Removing old track:",
+              currentOld && currentOld.label
+            );
             if (currentOld) {
               try {
                 original.removeTrack(currentOld);
@@ -84,7 +92,8 @@ export function useSwapCamera(
           original.addTrack(newVideoTrack);
           console.log("[SWAP] Adding new track:", newVideoTrack.label);
 
-          if (localVideoRef && localVideoRef.current) localVideoRef.current.srcObject = original;
+          if (localVideoRef && localVideoRef.current)
+            localVideoRef.current.srcObject = original;
           console.log("[SWAP] ✅ Camera swap completed (replaceTrack)");
         } else {
           // replaceTrack not available/failed: update local stream and fallback
@@ -102,22 +111,27 @@ export function useSwapCamera(
 
           original.addTrack(newVideoTrack);
           console.log("[SWAP] Adding new track:", newVideoTrack.label);
-          if (localVideoRef && localVideoRef.current) localVideoRef.current.srcObject = original;
+          if (localVideoRef && localVideoRef.current)
+            localVideoRef.current.srcObject = original;
 
           // Fallback: restart on iOS or when no replace capability
           if (isiOS()) {
-            console.log('[SWAP] replaceTrack not usable — restarting call on iOS');
+            console.log(
+              "[SWAP] replaceTrack not usable — restarting call on iOS"
+            );
             if (window.hangup) window.hangup();
             if (window.call) window.call();
           } else {
-            console.log('[SWAP] replaceTrack not supported and not iOS — best-effort local update done');
+            console.log(
+              "[SWAP] replaceTrack not supported and not iOS — best-effort local update done"
+            );
           }
 
           console.log("[SWAP] ✅ Camera swap attempted (fallback)");
         }
 
         // Stop temporary tracks that are not now in the original stream
-        tmpStream.getTracks().forEach(t => {
+        tmpStream.getTracks().forEach((t) => {
           if (t !== newVideoTrack) t.stop();
         });
       } catch (err) {
@@ -125,5 +139,4 @@ export function useSwapCamera(
       }
     })();
   }, [selectedDeviceId, localVideoRef, originalStreamRef, peerRef]);
-
 }

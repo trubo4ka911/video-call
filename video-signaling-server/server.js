@@ -34,7 +34,10 @@ const defaultOrigins = [
   "https://localhost:3001",
 ];
 const origins = rawOrigins
-  ? rawOrigins.split(",").map((s) => s.trim()).filter(Boolean)
+  ? rawOrigins
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
   : defaultOrigins;
 
 const io = socketIo(server, {

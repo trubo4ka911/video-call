@@ -40,7 +40,9 @@ export function useCall({
   const hangupRef = useRef();
 
   const handleConnectionFailed = useCallback(() => {
-    console.warn("[call] connection failed event received, attempting reconnect...");
+    console.warn(
+      "[call] connection failed event received, attempting reconnect..."
+    );
     if (reconnectAttempts.current >= MAX_RECONNECT) {
       console.warn("[call] max reconnect attempts reached, giving up");
       hangupRef.current?.();
@@ -52,9 +54,9 @@ export function useCall({
     setTimeout(async () => {
       try {
         await createPeerRef.current?.({ initiator: true, stream: localStream });
-        console.log('[call] reconnect attempt created new peer');
+        console.log("[call] reconnect attempt created new peer");
       } catch (e) {
-        console.warn('[call] reconnect attempt failed', e);
+        console.warn("[call] reconnect attempt failed", e);
       }
     }, 500);
   }, []);
