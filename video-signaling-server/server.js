@@ -24,12 +24,12 @@ if (process.env.FORCE_HTTP === "true") {
 // Build allowed origins list from environment (comma-separated) or fall back to defaults
 const rawOrigins = process.env.SIGNALING_CORS_ORIGINS;
 const defaultOrigins = [
-  "http://10.82.20.126:3000",
-  "http://10.82.20.126:3001",
+  "http://10.82.20.28:3000",
+  "http://10.82.20.28:3001",
   "http://localhost:3000",
   "http://localhost:3001",
-  "https://10.82.20.126:3000",
-  "https://10.82.20.126:3001",
+  "https://10.82.20.28:3000",
+  "https://10.82.20.28:3001",
   "https://localhost:3000",
   "https://localhost:3001",
 ];
