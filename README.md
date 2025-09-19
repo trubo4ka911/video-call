@@ -57,3 +57,10 @@ node server.js
 ---
 
 Enjoy testing your video call app on multiple devices!
+
+
+
+If your IP changed, regenerate the certs with mkcert and update the client URL accordingly:
+c:\video-call\mkcert.exe -cert-file cert.pem -key-file key.pem localhost 127.0.0.1 10.82.20.28
+copy cert.pem video-signaling-server\cert.pem
+copy key.pem video-signaling-server\key.pem
