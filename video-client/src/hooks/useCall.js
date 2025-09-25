@@ -1,6 +1,13 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { usePeerConnection } from "./usePeerConnection";
 
+const SOCKET_EVENTS = {
+  INCOMING_CALL: "incoming-call",
+  CALL_ANSWERED: "call-answered",
+  ICE_CANDIDATE: "ice-candidate",
+  CALL_HANGUP: "call-hangup",
+};
+
 export function useCall({
   socket,
   localRef,
@@ -203,10 +210,10 @@ export function useCall({
       hangup();
     }
 
-    socket.on("incoming-call", handleIncomingCall);
-    socket.on("call-answered", handleCallAnswered);
-    socket.on("ice-candidate", handleIceCandidate);
-    socket.on("call-hangup", handleCallHangup);
+    socket.on(SOCKET_EVENTS.INCOMING_CALL, handleIncomingCall);
+    socket.on(SOCKET_EVENTS.CALL_ANSWERED, handleCallAnswered);
+    socket.on(SOCKET_EVENTS.ICE_CANDIDATE, handleIceCandidate);
+    socket.on(SOCKET_EVENTS.CALL_HANGUP, handleCallHangup);
 
     window.socket = socket;
     window.me = me;
@@ -215,10 +222,10 @@ export function useCall({
     window.call = call;
 
     return () => {
-      socket.off("incoming-call", handleIncomingCall);
-      socket.off("call-answered", handleCallAnswered);
-      socket.off("ice-candidate", handleIceCandidate);
-      socket.off("call-hangup", handleCallHangup);
+      socket.off(SOCKET_EVENTS.INCOMING_CALL, handleIncomingCall);
+      socket.off(SOCKET_EVENTS.CALL_ANSWERED, handleCallAnswered);
+      socket.off(SOCKET_EVENTS.ICE_CANDIDATE, handleIceCandidate);
+      socket.off(SOCKET_EVENTS.CALL_HANGUP, handleCallHangup);
     };
   }, [socket, peerRef, offerSDP, hangup, call, callee, me]);
 
