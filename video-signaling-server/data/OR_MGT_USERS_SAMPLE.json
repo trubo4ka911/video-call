@@ -2,6 +2,15 @@
   {
     "id": "a3cad2b2-2e4f-4ddf-8c32-2314610c078f",
     "SearchUser": "mkazstandard",
+    "relatedAccounts": [
+      {
+        "id": "a3cad2b2-2e4f-4ddf-8c32-2314610c078f",
+        "id": "dea90e27-c520-4464-be7b-7246b9a4f5f3",
+        "id": "a38e47ab-df93-450c-b293-08a58dbb35c1",
+        "id": "def2aacd-3093-461a-9d1f-40778a403a2c",
+        "id": "5da71a0d-04ed-4714-84dc-e2e0dff94c29"
+      }
+    ],
     "FirstName": "Mark",
     "LastName": "Super",
     "UserType": "Standard",
@@ -12,6 +21,13 @@
   {
     "id": "c0b8d14f-aa7c-49f7-9921-848299bef9b7",
     "SearchUser": "olstandard",
+    "TODO": "Add more samples for remove self. This has to be an optional feature. Some apps might not be able to provide this information",
+    "relatedAccounts": [
+      {
+        "id": "c0b8d14f-aa7c-49f7-9921-848299bef9b7",
+        "id": "c0b8d14f-aa7c-49f7-9921-8482erg4f9b7"
+      }
+    ],
     "FirstName": "Ollie",
     "LastName": "Admin",
     "UserType": "Standard",
@@ -20,8 +36,34 @@
     "ParentOrg": ""
   },
   {
+    "id": "c0b8d14f-aa7c-49f7-9921-8482erg4f9b7",
+    "SearchUser": "olsuper",
+
+    "relatedAccounts": [
+      {
+        "id": "c0b8d14f-aa7c-49f7-9921-848299bef9b7",
+        "id": "c0b8d14f-aa7c-49f7-9921-8482erg4f9b7"
+      }
+    ],
+    "FirstName": "Ollie",
+    "LastName": "SAdmin",
+    "UserType": "Super Admin",
+    "OrgCode": "RX7",
+    "OrgType": "Major",
+    "ParentOrg": ""
+  },
+  {
     "id": "dea90e27-c520-4464-be7b-7246b9a4f5f3",
     "SearchUser": "mkazhaproxy",
+    "relatedAccounts": [
+      {
+        "id": "a3cad2b2-2e4f-4ddf-8c32-2314610c078f",
+        "id": "dea90e27-c520-4464-be7b-7246b9a4f5f3",
+        "id": "a38e47ab-df93-450c-b293-08a58dbb35c1",
+        "id": "def2aacd-3093-461a-9d1f-40778a403a2c",
+        "id": "5da71a0d-04ed-4714-84dc-e2e0dff94c29"
+      }
+    ],
     "FirstName": "Kaz",
     "LastName": "NON PID",
     "UserType": "Standard",
@@ -32,6 +74,15 @@
   {
     "id": "a38e47ab-df93-450c-b293-08a58dbb35c1",
     "SearchUser": "mkaznonpid",
+    "relatedAccounts": [
+      {
+        "id": "a3cad2b2-2e4f-4ddf-8c32-2314610c078f",
+        "id": "dea90e27-c520-4464-be7b-7246b9a4f5f3",
+        "id": "a38e47ab-df93-450c-b293-08a58dbb35c1",
+        "id": "def2aacd-3093-461a-9d1f-40778a403a2c",
+        "id": "5da71a0d-04ed-4714-84dc-e2e0dff94c29"
+      }
+    ],
     "FirstName": "Mark",
     "LastName": "NON PID",
     "UserType": "Standard",
@@ -41,6 +92,15 @@
   },
   {
     "id": "def2aacd-3093-461a-9d1f-40778a403a2c",
+    "relatedAccounts": [
+      {
+        "id": "a3cad2b2-2e4f-4ddf-8c32-2314610c078f",
+        "id": "dea90e27-c520-4464-be7b-7246b9a4f5f3",
+        "id": "a38e47ab-df93-450c-b293-08a58dbb35c1",
+        "id": "def2aacd-3093-461a-9d1f-40778a403a2c",
+        "id": "5da71a0d-04ed-4714-84dc-e2e0dff94c29"
+      }
+    ],
     "SearchUser": "mkazrladmin",
     "FirstName": "Mark",
     "LastName": "Adm",
@@ -51,6 +111,15 @@
   },
   {
     "id": "5da71a0d-04ed-4714-84dc-e2e0dff94c29",
+    "relatedAccounts": [
+      {
+        "id": "a3cad2b2-2e4f-4ddf-8c32-2314610c078f",
+        "id": "dea90e27-c520-4464-be7b-7246b9a4f5f3",
+        "id": "a38e47ab-df93-450c-b293-08a58dbb35c1",
+        "id": "def2aacd-3093-461a-9d1f-40778a403a2c",
+        "id": "5da71a0d-04ed-4714-84dc-e2e0dff94c29"
+      }
+    ],
     "SearchUser": "mkazsuper",
     "FirstName": "Mark",
     "LastName": "Super",
@@ -61,6 +130,11 @@
   },
   {
     "id": "e5b410b8-6d40-4a4f-9157-a144b04c9b9f",
+    "relatedAccounts": [
+      {
+        "id": ""
+      }
+    ],
     "SearchUser": "rafalima",
     "FirstName": "Rafa",
     "LastName": "Lima",
@@ -71,6 +145,12 @@
   },
   {
     "id": "e5dfgb8-6d40-4a4f-9157-a144b04c9b9f",
+    "relatedAccounts": [
+      {
+        "id": "e5dfgb8-6d40-4a4f-9157-a144b04c9b9f",
+        "id": "e5hjkb8-6d40-4a4f-9157-a144b04c9b9f"
+      }
+    ],
     "SearchUser": "jomoadm",
     "FirstName": "John",
     "LastName": "Moody",
@@ -81,6 +161,12 @@
   },
   {
     "id": "e5hjkb8-6d40-4a4f-9157-a144b04c9b9f",
+    "relatedAccounts": [
+      {
+        "id": "e5dfgb8-6d40-4a4f-9157-a144b04c9b9f",
+        "id": "e5hjkb8-6d40-4a4f-9157-a144b04c9b9f"
+      }
+    ],
     "SearchUser": "jaybond",
     "FirstName": "James",
     "LastName": "Bond",

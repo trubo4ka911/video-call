@@ -58,9 +58,17 @@ node server.js
 
 Enjoy testing your video call app on multiple devices!
 
+If your IP changed, regenerate the certs with mkcert (Windows PowerShell):
 
+```powershell
+# From the repo root (note the `./` prefix in PowerShell)
+./mkcert.exe -install
 
-If your IP changed, regenerate the certs with mkcert and update the client URL accordingly:
-c:\video-call\mkcert.exe -cert-file cert.pem -key-file key.pem localhost 127.0.0.1 10.82.20.28
-copy cert.pem video-signaling-server\cert.pem
-copy key.pem video-signaling-server\key.pem
+# Replace the last IP with your current IPv4 (from ipconfig)
+./mkcert.exe -cert-file .\video-client\cert.pem -key-file .\video-client\key.pem localhost 127.0.0.1 10.82.20.72
+```
+
+Notes:
+
+- On Windows PowerShell you must prefix with `./` or `.\` to execute from the current folder.
+- The signaling server reads certs from `video-client/cert.pem` and `video-client/key.pem`, so you do not need to copy them elsewhere.

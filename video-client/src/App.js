@@ -76,7 +76,7 @@ export default function App() {
 
   // ── Load users for selected source (for login) ──
   useEffect(() => {
-    const url = `https://10.82.20.28:9001/api/users/${userSource}?search=${encodeURIComponent(
+    const url = `https://10.82.20.72:9001/api/users/${userSource}?search=${encodeURIComponent(
       search
     )}`;
     fetch(url)
@@ -88,10 +88,10 @@ export default function App() {
   // ── Load all users from both sources (for online detection) ──
   useEffect(() => {
     Promise.all([
-      fetch("https://10.82.20.28:9001/api/users/management").then((r) =>
+      fetch("https://10.82.20.72:9001/api/users/management").then((r) =>
         r.json()
       ),
-      fetch("https://10.82.20.28:9001/api/users/mobile").then((r) => r.json()),
+      fetch("https://10.82.20.72:9001/api/users/mobile").then((r) => r.json()),
     ]).then(([mgt, mob]) => setAllUsers([...mgt, ...mob]));
   }, []);
 
