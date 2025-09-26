@@ -13,6 +13,8 @@ import { useLocalStream } from "./hooks/useLocalStream";
 import { useCall } from "./hooks/useCall";
 import { useSwapCamera } from "./hooks/useSwapCamera";
 
+const serverUrl = process.env.REACT_APP_SERVER_URL;
+
 export default function App() {
   // ── Login ──
   const [users, setUsers] = useState([]);
@@ -76,7 +78,7 @@ export default function App() {
 
   // ── Load users for selected source (for login) ──
   useEffect(() => {
-    const url = `https://10.82.20.72:9001/api/users/${userSource}?search=${encodeURIComponent(
+    const url = `${serverUrl}/api/users/${userSource}?search=${encodeURIComponent(
       search
     )}`;
     fetch(url)
@@ -88,11 +90,15 @@ export default function App() {
   // ── Load all users from both sources (for online detection) ──
   useEffect(() => {
     Promise.all([
-      fetch("https://10.82.20.72:9001/api/users/management").then((r) =>
-        r.json()
-      ),
-      fetch("https://10.82.20.72:9001/api/users/mobile").then((r) => r.json()),
-    ]).then(([mgt, mob]) => setAllUsers([...mgt, ...mob]));
+      fetch(`${serverUrl}/api/users/management`).then((r) => r.json()),
+      fetch(`${serverUrl}/api/users/mobile`).then((r) => r.json()),
+    ])
+      .then(([mgt, mob]) => {
+        const users = [...mgt, ...mob];
+        console.log(users);
+        setAllUsers(users);
+      })
+      .catch((err) => console.log(err));
   }, []);
 
   // ── Identify ourselves & get online-list ──

@@ -8,41 +8,17 @@ const socketIo = require("socket.io");
 
 const app = express();
 let server;
-if (process.env.FORCE_HTTP === "true") {
-  const http = require("http");
-  server = http.createServer(app);
-  console.log("[signaling] starting in HTTP mode (FORCE_HTTP=true)");
-} else {
-  server = https.createServer(
-    {
-      key: fs.readFileSync(path.join(__dirname, "../video-client/key.pem")),
-      cert: fs.readFileSync(path.join(__dirname, "../video-client/cert.pem")),
-    },
-    app
-  );
-}
-// Build allowed origins list from environment (comma-separated) or fall back to defaults
-const rawOrigins = process.env.SIGNALING_CORS_ORIGINS;
-const defaultOrigins = [
-  "http://10.82.20.72:3000",
-  "http://10.82.20.72:3001",
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "https://10.82.20.72:3000",
-  "https://10.82.20.72:3001",
-  "https://localhost:3000",
-  "https://localhost:3001",
-];
-const origins = rawOrigins
-  ? rawOrigins
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean)
-  : defaultOrigins;
+
+const http = require("http");
+server = http.createServer(app);
+console.log("[signaling] starting in HTTP mode (FORCE_HTTP=true)");
+
+// Build allowed rawOrigin list from environment (comma-separated) or fall back to defaults
+const rawOrigin = process.env.SIGNALING_CORS_ORIGINS || "*"; // not in use
 
 const io = socketIo(server, {
   cors: {
-    origin: origins,
+    origin: rawOrigin,
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -89,7 +65,7 @@ app.get("/api/users/mobile", (req, res) => {
 app.get("/debug/signaling", (req, res) => {
   const proto = process.env.FORCE_HTTP === "true" ? "http" : "https";
   const port = process.env.PORT || 9001;
-  res.json({ proto, port, corsOrigins: origins });
+  res.json({ proto, port, corsOrigins: rawOrigin });
 });
 
 // --- Socket.IO Signaling Logic ---
@@ -185,5 +161,10 @@ io.on("connection", (socket) => {
 const PORT = process.env.PORT || 9001;
 server.listen(PORT, () => {
   console.log(`Signaling server listening on http://localhost:${PORT}`);
-  console.log(`[signaling] allowed CORS origins:`, origins);
+  console.log(`[signaling] allowed CORS rawOrigin:`, rawOrigin);
 });
+// .then()
+// .catch((e) => {
+//   console.error("Failed to start server:", e);
+//   process.exit(1);
+// });
