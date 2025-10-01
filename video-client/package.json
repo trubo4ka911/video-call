@@ -18,7 +18,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "cross-env react-scripts start",
+    "start": "cross-env REACT_APP_IS_LOCALHOST=true react-scripts start",
     "start-two": "cross-env PORT=3001 react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",

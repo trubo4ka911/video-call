@@ -13,7 +13,10 @@ import { useLocalStream } from "./hooks/useLocalStream";
 import { useCall } from "./hooks/useCall";
 import { useSwapCamera } from "./hooks/useSwapCamera";
 
-const serverUrl = process.env.REACT_APP_SERVER_URL;
+const serverUrl =
+  process.env.REACT_APP_IS_LOCALHOST === "true"
+    ? process.env.REACT_APP_SERVER_URL_LOCAL
+    : process.env.REACT_APP_SERVER_URL;
 
 export default function App() {
   // ── Login ──
