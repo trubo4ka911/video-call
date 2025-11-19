@@ -98,6 +98,7 @@ io.on("connection", (socket) => {
 
   // Handle user identification and presence
   socket.on("identify", handleIdentify);
+  socket.on("logout", handleLogout);
   socket.on("disconnect", handleDisconnect);
   // WebRTC signaling events
   socket.on("call-user", handleCallUser);
@@ -121,10 +122,28 @@ io.on("connection", (socket) => {
    * @param {{ userId: string }} param0
    */
   function handleIdentify({ userId }) {
+    // Remove any previous mapping that pointed to this socket (switching users)
+    for (const [uid, sid] of Object.entries(userSockets)) {
+      if (sid === socket.id) {
+        delete userSockets[uid];
+      }
+    }
     // userId is SearchUser for both DBs
     userSockets[userId] = socket.id;
     console.log(`User ${userId} is now mapped to socket ${socket.id}`);
     io.emit("online-list", Object.keys(userSockets));
+  }
+
+  /**
+   * Explicit logout: remove mapping if this socket owns the userId
+   * @param {{ userId: string }} param0
+   */
+  function handleLogout({ userId }) {
+    if (userSockets[userId] === socket.id) {
+      delete userSockets[userId];
+      console.log(`User ${userId} logged out from socket ${socket.id}`);
+      io.emit("online-list", Object.keys(userSockets));
+    }
   }
 
   /**

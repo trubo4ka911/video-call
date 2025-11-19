@@ -198,6 +198,13 @@ export default function App() {
               } catch (e) {
                 console.warn("cleanup failed:", e);
               }
+              try {
+                if (me) {
+                  socket.emit("logout", { userId: me });
+                }
+              } catch (e) {
+                console.warn("logout emit failed:", e);
+              }
               setLoggedIn(false);
               setMe("");
             }}
