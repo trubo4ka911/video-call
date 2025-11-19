@@ -72,3 +72,38 @@ Notes:
 
 - On Windows PowerShell you must prefix with `./` or `.\` to execute from the current folder.
 - The signaling server reads certs from `video-client/cert.pem` and `video-client/key.pem`, so you do not need to copy them elsewhere.
+
+### Locating and Sending the Root CA (for iPad trust)
+
+To allow an iPad (or other device) to trust your locally generated HTTPS certificates, you must install the mkcert root CA on that device. Do NOT send `key.pem` or `cert.pem` – only the root CA file.
+
+1. Locate the root CA directory (PowerShell from repo root):
+
+```powershell
+./mkcert.exe -CAROOT
+```
+
+This prints a path like: `C:\Users\<You>\AppData\Local\mkcert`. Inside it you will find `rootCA.pem` (and `rootCA-key.pem` – never share the key file).
+
+1. Prepare the file for transfer (optional rename to `.cer` for iOS):
+
+```powershell
+Copy-Item (./mkcert.exe -CAROOT)\rootCA.pem .\video-client\video-call-root.cer
+```
+
+Renaming to `.cer` helps iOS open it; content unchanged.
+
+1. Send the `.cer` (or original `rootCA.pem`) to the iPad via email, cloud drive, or a simple local share. Do not send any private key file.
+
+1. Install & trust on iPad:
+
+- Tap the file, install the profile.
+- Go to Settings > General > About > Certificate Trust Settings.
+- Enable full trust for the newly installed root.
+
+1. Use the app over HTTPS:
+
+- Start signaling server and React client as usual (they use `cert.pem` / `key.pem`).
+- Access `https://<your-ip>:3000` and `https://<your-ip>:9001` from the iPad browser. The connection should be trusted.
+
+If `./mkcert.exe -CAROOT` fails, ensure you are in the repo root and using the `./` prefix; the plain `mkcert` command requires it to be in your PATH.

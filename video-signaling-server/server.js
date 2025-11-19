@@ -9,9 +9,33 @@ const socketIo = require("socket.io");
 const app = express();
 let server;
 
-const http = require("http");
-server = http.createServer(app);
-console.log("[signaling] starting in HTTP mode (FORCE_HTTP=true)");
+// Prefer HTTPS unless FORCE_HTTP=true
+const FORCE_HTTP = process.env.FORCE_HTTP === "true";
+if (!FORCE_HTTP) {
+  try {
+    const certDir = path.resolve(__dirname, "..", "video-client");
+    const certPath = path.join(certDir, "cert.pem");
+    const keyPath = path.join(certDir, "key.pem");
+    const options = {
+      cert: fs.readFileSync(certPath),
+      key: fs.readFileSync(keyPath),
+    };
+    server = https.createServer(options, app);
+    console.log("[signaling] starting in HTTPS mode");
+  } catch (e) {
+    console.warn(
+      "[signaling] HTTPS setup failed, falling back to HTTP:",
+      e && e.message
+    );
+    const http = require("http");
+    server = http.createServer(app);
+    console.log("[signaling] starting in HTTP mode (fallback)");
+  }
+} else {
+  const http = require("http");
+  server = http.createServer(app);
+  console.log("[signaling] starting in HTTP mode (FORCE_HTTP=true)");
+}
 
 // Build allowed rawOrigin list from environment (comma-separated) or fall back to defaults
 const rawOrigin = process.env.SIGNALING_CORS_ORIGINS || "*"; // not in use
