@@ -141,10 +141,16 @@ export function useCall({
 
       // Ensure microphone is OFF: remove and stop any audio tracks
       try {
-        const a = localStream.getAudioTracks ? localStream.getAudioTracks() : [];
+        const a = localStream.getAudioTracks
+          ? localStream.getAudioTracks()
+          : [];
         a.forEach((t) => {
-          try { localStream.removeTrack(t); } catch {}
-          try { t.stop(); } catch {}
+          try {
+            localStream.removeTrack(t);
+          } catch {}
+          try {
+            t.stop();
+          } catch {}
         });
       } catch {}
       localRef.current.srcObject = localStream;
