@@ -22,7 +22,7 @@ export function useCall({
   const [status, setStatus] = useState("idle");
   const [callee, setCallee] = useState(null);
   const [offerSDP, setOfferSDP] = useState(null);
-  const [muted, setMuted] = useState(false);
+  const [muted, setMuted] = useState(true);
   const [videoOff, setVideoOff] = useState(false);
   const originalStreamRef = useRef(null);
   const iceBuffer = useRef([]);
@@ -120,11 +120,18 @@ export function useCall({
       try {
         localStream = await getLocalStream();
       } catch (err) {
-        onError?.("Failed to get local stream");
-        localStream = await navigator.mediaDevices.getUserMedia({
-          video: false,
-          audio: true,
-        });
+        console.warn("Primary local stream acquisition failed:", err);
+        try {
+          // Demo requirement: microphone OFF — use video-only fallback
+          localStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false,
+          });
+        } catch (err2) {
+          console.warn("Video-only fallback failed:", err2);
+          onError?.("Failed to get camera. Please allow access and try again.");
+          return;
+        }
       }
 
       if (!localStream) {
@@ -132,6 +139,20 @@ export function useCall({
         return;
       }
 
+      // Ensure microphone is OFF: remove and stop any audio tracks
+      try {
+        const a = localStream.getAudioTracks
+          ? localStream.getAudioTracks()
+          : [];
+        a.forEach((t) => {
+          try {
+            localStream.removeTrack(t);
+          } catch {}
+          try {
+            t.stop();
+          } catch {}
+        });
+      } catch {}
       localRef.current.srcObject = localStream;
       originalStreamRef.current = localStream;
 

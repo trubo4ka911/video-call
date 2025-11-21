@@ -8,41 +8,41 @@ const socketIo = require("socket.io");
 
 const app = express();
 let server;
-if (process.env.FORCE_HTTP === "true") {
+
+// Prefer HTTPS unless FORCE_HTTP=true
+const FORCE_HTTP = process.env.FORCE_HTTP === "true";
+if (!FORCE_HTTP) {
+  try {
+    const certDir = path.resolve(__dirname, "..", "video-client");
+    const certPath = path.join(certDir, "cert.pem");
+    const keyPath = path.join(certDir, "key.pem");
+    const options = {
+      cert: fs.readFileSync(certPath),
+      key: fs.readFileSync(keyPath),
+    };
+    server = https.createServer(options, app);
+    console.log("[signaling] starting in HTTPS mode");
+  } catch (e) {
+    console.warn(
+      "[signaling] HTTPS setup failed, falling back to HTTP:",
+      e && e.message
+    );
+    const http = require("http");
+    server = http.createServer(app);
+    console.log("[signaling] starting in HTTP mode (fallback)");
+  }
+} else {
   const http = require("http");
   server = http.createServer(app);
   console.log("[signaling] starting in HTTP mode (FORCE_HTTP=true)");
-} else {
-  server = https.createServer(
-    {
-      key: fs.readFileSync(path.join(__dirname, "../video-client/key.pem")),
-      cert: fs.readFileSync(path.join(__dirname, "../video-client/cert.pem")),
-    },
-    app
-  );
 }
-// Build allowed origins list from environment (comma-separated) or fall back to defaults
-const rawOrigins = process.env.SIGNALING_CORS_ORIGINS;
-const defaultOrigins = [
-  "http://10.82.20.72:3000",
-  "http://10.82.20.72:3001",
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "https://10.82.20.72:3000",
-  "https://10.82.20.72:3001",
-  "https://localhost:3000",
-  "https://localhost:3001",
-];
-const origins = rawOrigins
-  ? rawOrigins
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean)
-  : defaultOrigins;
+
+// Build allowed rawOrigin list from environment (comma-separated) or fall back to defaults
+const rawOrigin = process.env.SIGNALING_CORS_ORIGINS || "*"; // not in use
 
 const io = socketIo(server, {
   cors: {
-    origin: origins,
+    origin: rawOrigin,
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -89,7 +89,7 @@ app.get("/api/users/mobile", (req, res) => {
 app.get("/debug/signaling", (req, res) => {
   const proto = process.env.FORCE_HTTP === "true" ? "http" : "https";
   const port = process.env.PORT || 9001;
-  res.json({ proto, port, corsOrigins: origins });
+  res.json({ proto, port, corsOrigins: rawOrigin });
 });
 
 // --- Socket.IO Signaling Logic ---
@@ -98,6 +98,7 @@ io.on("connection", (socket) => {
 
   // Handle user identification and presence
   socket.on("identify", handleIdentify);
+  socket.on("logout", handleLogout);
   socket.on("disconnect", handleDisconnect);
   // WebRTC signaling events
   socket.on("call-user", handleCallUser);
@@ -121,10 +122,28 @@ io.on("connection", (socket) => {
    * @param {{ userId: string }} param0
    */
   function handleIdentify({ userId }) {
+    // Remove any previous mapping that pointed to this socket (switching users)
+    for (const [uid, sid] of Object.entries(userSockets)) {
+      if (sid === socket.id) {
+        delete userSockets[uid];
+      }
+    }
     // userId is SearchUser for both DBs
     userSockets[userId] = socket.id;
     console.log(`User ${userId} is now mapped to socket ${socket.id}`);
     io.emit("online-list", Object.keys(userSockets));
+  }
+
+  /**
+   * Explicit logout: remove mapping if this socket owns the userId
+   * @param {{ userId: string }} param0
+   */
+  function handleLogout({ userId }) {
+    if (userSockets[userId] === socket.id) {
+      delete userSockets[userId];
+      console.log(`User ${userId} logged out from socket ${socket.id}`);
+      io.emit("online-list", Object.keys(userSockets));
+    }
   }
 
   /**
@@ -185,5 +204,10 @@ io.on("connection", (socket) => {
 const PORT = process.env.PORT || 9001;
 server.listen(PORT, () => {
   console.log(`Signaling server listening on http://localhost:${PORT}`);
-  console.log(`[signaling] allowed CORS origins:`, origins);
+  console.log(`[signaling] allowed CORS rawOrigin:`, rawOrigin);
 });
+// .then()
+// .catch((e) => {
+//   console.error("Failed to start server:", e);
+//   process.exit(1);
+// });
